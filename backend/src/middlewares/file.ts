@@ -1,7 +1,7 @@
+import { randomUUID } from 'crypto'
 import { Express, Request } from 'express'
 import multer, { FileFilterCallback } from 'multer'
 import { extname, join } from 'path'
-import { v4 as uuidv4 } from 'uuid'
 import fs from 'fs'
 import { FILE_SIZE } from '../config'
 
@@ -18,20 +18,11 @@ const temp = join(
 fs.mkdirSync(temp, { recursive: true })
 
 const storage = multer.diskStorage({
-    destination: (
-        _req: Request,
-        _file: Express.Multer.File,
-        cb: DestinationCallback
-    ) => {
-        cb(null, temp)
-    },
-
-    filename: (
-        _req: Request,
-        file: Express.Multer.File,
-        cb: FileNameCallback
-    ) => {
-        cb(null, uuidv4().concat(extname(file.originalname)))
+    destination: (_req: Request, _file, cb: DestinationCallback) =>
+        cb(null, temp),
+    filename: (_req: Request, file, cb: FileNameCallback) => {
+        const filename = randomUUID().concat(extname(file.originalname))
+        cb(null, filename)
     },
 })
 
