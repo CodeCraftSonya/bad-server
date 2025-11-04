@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
-import { FilterQuery, Error as MongooseError, Types } from 'mongoose'
+import { Error as MongooseError, FilterQuery, Types } from 'mongoose'
 import BadRequestError from '../errors/bad-request-error'
 import NotFoundError from '../errors/not-found-error'
 import Order, { IOrder } from '../models/order'
 import Product, { IProduct } from '../models/product'
 import User from '../models/user'
-
+import { sanitizeInput } from '../utils/san'
 // eslint-disable-next-line max-len
 // GET /orders?page=2&limit=5&sort=totalAmount&order=desc&orderDateFrom=2024-07-01&orderDateTo=2024-08-01&status=delivering&totalAmountFrom=100&totalAmountTo=1000&search=%2B1
 
@@ -29,6 +29,22 @@ export const getOrders = async (
         } = req.query
 
         const filters: FilterQuery<Partial<IOrder>> = {}
+
+        const normalizedLimit = Math.min(Number(limit), 5).toString()
+
+        if (status) {
+            if (typeof status === 'string' && /^[a-zA-Z0-9_-]+$/.test(status)) {
+                filters.status = status
+            } else {
+                throw new BadRequestError('Invalid status parameter')
+            }
+        }
+
+        if (search) {
+            if (/[^\w\s]/.test(search as string)) {
+                throw new BadRequestError('Invalid search request')
+            }
+        }
 
         if (status) {
             if (typeof status === 'object') {
@@ -116,8 +132,8 @@ export const getOrders = async (
 
         aggregatePipeline.push(
             { $sort: sort },
-            { $skip: (Number(page) - 1) * Number(limit) },
-            { $limit: Number(limit) },
+            { $skip: (Number(page) - 1) * Number(normalizedLimit) },
+            { $limit: Number(normalizedLimit) },
             {
                 $group: {
                     _id: '$_id',
@@ -133,7 +149,7 @@ export const getOrders = async (
 
         const orders = await Order.aggregate(aggregatePipeline)
         const totalOrders = await Order.countDocuments(filters)
-        const totalPages = Math.ceil(totalOrders / Number(limit))
+        const totalPages = Math.ceil(totalOrders / Number(normalizedLimit))
 
         res.status(200).json({
             orders,
@@ -141,7 +157,7 @@ export const getOrders = async (
                 totalOrders,
                 totalPages,
                 currentPage: Number(page),
-                pageSize: Number(limit),
+                pageSize: Number(normalizedLimit),
             },
         })
     } catch (error) {
@@ -157,9 +173,10 @@ export const getOrdersCurrentUser = async (
     try {
         const userId = res.locals.user._id
         const { search, page = 1, limit = 5 } = req.query
+        const normalizedLimit = Math.min(Number(limit), 5)
         const options = {
             skip: (Number(page) - 1) * Number(limit),
-            limit: Number(limit),
+            limit: Number(normalizedLimit),
         }
 
         const user = await User.findById(userId)
@@ -205,7 +222,7 @@ export const getOrdersCurrentUser = async (
         }
 
         const totalOrders = orders.length
-        const totalPages = Math.ceil(totalOrders / Number(limit))
+        const totalPages = Math.ceil(totalOrders / Number(normalizedLimit))
 
         orders = orders.slice(options.skip, options.skip + options.limit)
 
@@ -215,7 +232,7 @@ export const getOrdersCurrentUser = async (
                 totalOrders,
                 totalPages,
                 currentPage: Number(page),
-                pageSize: Number(limit),
+                pageSize: Number(normalizedLimit),
             },
         })
     } catch (error) {
@@ -291,8 +308,10 @@ export const createOrder = async (
         const basket: IProduct[] = []
         const products = await Product.find<IProduct>({})
         const userId = res.locals.user._id
-        const { address, payment, phone, total, email, items, comment } =
+        const { address, payment, phone, total, email, items, _comment } =
             req.body
+
+        const cleanComment = sanitizeInput(req.body.comment)
 
         items.forEach((id: Types.ObjectId) => {
             const product = products.find((p) => p._id.equals(id))
@@ -315,7 +334,7 @@ export const createOrder = async (
             payment,
             phone,
             email,
-            comment,
+            comment: cleanComment,
             customer: userId,
             deliveryAddress: address,
         })
