@@ -9,9 +9,10 @@ export function cleanRequestBody(
     _res: Response,
     next: NextFunction
 ): void {
-    const sanitized: Record<string, any> = {}
-    for (const [key, value] of Object.entries(req.body ?? {})) {
-        sanitized[key] =
+    const sanitized = Object.entries(req.body ?? {}).reduce<
+        Record<string, any>
+    >((acc, [key, value]) => {
+        acc[key] =
             typeof value === 'string'
                 ? sanitizeHtml(value, {
                       allowedTags: [],
@@ -19,7 +20,8 @@ export function cleanRequestBody(
                       disallowedTagsMode: 'discard',
                   })
                 : value
-    }
+        return acc
+    }, {})
 
     req.body = sanitized
     next()

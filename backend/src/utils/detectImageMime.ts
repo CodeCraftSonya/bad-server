@@ -19,7 +19,7 @@ async function readHeader(filePath: string, length = 256): Promise<Uint8Array> {
 
 function matchesSignature(buffer: Uint8Array, signature: number[]): boolean {
     if (buffer.length < signature.length) return false
-    for (let i = 0; i < signature.length; i++) {
+    for (let i = 0; i < signature.length; i += 1) {
         if (buffer[i] !== signature[i]) return false
     }
     return true
@@ -33,9 +33,12 @@ export async function detectImageMime(
 ): Promise<string | null> {
     const header = await readHeader(filePath, 512)
 
-    for (const [mime, sig] of Object.entries(SIGNATURES)) {
-        if (matchesSignature(header, sig)) return mime
-    }
+    const matched = Object.entries(SIGNATURES).find(([_, sig]) =>
+        matchesSignature(header, sig)
+    )
+
+    if (matched) return matched[0]
+
     const textStart = new TextDecoder('utf-8', { fatal: false })
         .decode(header)
         .trimStart()

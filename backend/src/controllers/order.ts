@@ -308,7 +308,7 @@ export const createOrder = async (
         const basket: IProduct[] = []
         const products = await Product.find<IProduct>({})
         const userId = res.locals.user._id
-        const { address, payment, phone, total, email, items, comment } =
+        const { address, payment, phone, total, email, items, _comment } =
             req.body
 
         const cleanComment = sanitizeInput(req.body.comment)

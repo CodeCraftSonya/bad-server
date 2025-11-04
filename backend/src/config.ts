@@ -38,9 +38,8 @@ export const FILE_SIZE = {
 
 export const doubleCsrfUtilities: DoubleCsrfConfigOptions = {
     getSecret: () => process.env.CSRF_SECRET || '___Secret___',
-    getSessionIdentifier: (req: AuthRequest) => {
-        return req.user?._id?.toString() || req.ip || 'anonymous'
-    },
+    getSessionIdentifier: (req: AuthRequest) =>
+        req.user?._id?.toString() || req.ip || 'anonymous',
     cookieName: process.env.CSRF_COOKIE_NAME || '__Host-larek.x-csrf-token',
     cookieOptions: {
         sameSite: 'strict',

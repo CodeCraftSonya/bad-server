@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express'
 import { constants } from 'http2'
+import * as fs from 'fs/promises'
 import BadRequestError from '../errors/bad-request-error'
 import { FILE_SIZE } from '../config'
-import * as fs from 'fs/promises'
 import { detectImageMime } from '../utils/detectImageMime'
 import { typeFiles } from '../middlewares/file'
 
